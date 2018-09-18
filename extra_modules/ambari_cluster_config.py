@@ -15,9 +15,15 @@ options:
   host:
     description:
       The hostname for the ambari web server
+     default:
+      localhost
   port:
     description:
       The port for the ambari web server
+  context_path:
+    description:
+      In case Ambari has a proxy in front of it, context path is the additional path, which must be prepended to each Ambari call. It should include a prepended slash, but no trailing slash
+    required: no
   username:
     description:
       The username for the ambari web server
@@ -58,6 +64,7 @@ EXAMPLES = '''
         protocol: http
         host: localhost
         port: 8080
+        context_path: /ambari
         username: admin
         password: admin
         cluster_name: my_cluster
@@ -112,8 +119,9 @@ def main():
 
     argument_spec = dict(
         protocol=dict(type='str', default='http', required=False),
-        host=dict(type='str', default=None, required=True),
+        host=dict(type='str', default='localhost', required=False),
         port=dict(type='int', default=None, required=True),
+        context_path=dict(type='str', default=None, required=False),
         username=dict(type='str', default=None, required=True),
         password=dict(type='str', default=None, required=True, no_log=True),
         cluster_name=dict(type='str', default=None, required=True),
@@ -150,6 +158,8 @@ def main():
     protocol = p.get('protocol')
     host = p.get('host')
     port = p.get('port')
+    context_path = p.get('context_path')
+    context_path = context_path if context_path is not None else ''
     username = p.get('username')
     password = p.get('password')
     cluster_name = p.get('cluster_name')
@@ -159,12 +169,12 @@ def main():
     ignore_secret = p.get('ignore_secret')
     connection_timeout = p.get('timeout_sec')
 
-    process_ambari_config(module, protocol, host, port, username, password,
+    process_ambari_config(module, protocol, host, port, context_path, username, password,
                           cluster_name, config_type, config_tag, config_map, ignore_secret, connection_timeout)
 
 
-def process_ambari_config(module, protocol, host, port, username, password, cluster_name, config_type, config_tag, config_map, ignore_secret, connection_timeout):
-    ambari_url = '{0}://{1}:{2}'.format(protocol, host, port)
+def process_ambari_config(module, protocol, host, port, context_path, username, password, cluster_name, config_type, config_tag, config_map, ignore_secret, connection_timeout):
+    ambari_url = '{0}://{1}:{2}{3}'.format(protocol, host, port, context_path)
 
     try:
         # Get current effective version/tag if not specified
