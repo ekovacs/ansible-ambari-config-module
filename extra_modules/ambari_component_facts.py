@@ -9,8 +9,8 @@ version_added: "1.0"
 short_description: Capturing Ambari cluster/component configuration as Ansible facts
 description: 
     - Used for capturing the configuration of all components installed on Ambari server into facts. 
-    - "Facts gather by this module should be accessed through the vars dict: {{ vars['config_type_name']['config_key'] }}, 
-        eg.: {{ vars['zoo.cfg']['syncLimit'] }} to avoid problems with invalid dict keys."
+    - "Facts gather by this module should be accessed through the vars dict: {{ ambari_component_facts['config_type_name']['config_key'] }}, 
+        eg.: {{ ambari_component_facts['zoo.cfg']['syncLimit'] }} to avoid problems with invalid dict keys."
     - "It makes sense to use: 'run_once: true' as well as 'delegate_to' the ambari host 
        and then use the default localhost as the host to speed things up" 
     - To see all the facts gathered, run your playbook with at least one level of verbosity
@@ -28,6 +28,11 @@ options:
   port:
     description:
       The port for the ambari web server
+  context_path:
+    description:
+      In case Ambari has a proxy in front of it, context path is the additional path, which must be prepended to each Ambari call. It should include a prepended slash, but no trailing slash
+    default:
+      ''
   username:
     description:
       The username for the ambari web server
@@ -39,10 +44,6 @@ options:
     description:
       The name of the cluster in ambari
     required: yes
-  context_path:
-    description:
-      In case Ambari has a proxy in front of it, context path is the additional path, which must be prepended to each Ambari call. It should include a prepended slash, but no trailing slash
-    required: no
 '''
 
 EXAMPLES = '''
@@ -85,7 +86,7 @@ def main():
         protocol=dict(type='str', default='http', required=False),
         host=dict(type='str', default='localhost', required=False),
         port=dict(type='int', default=None, required=True),
-        context_path=dict(type='str', default=None, required=False),
+        context_path=dict(type='str', default='', required=False),
         username=dict(type='str', default=None, required=True),
         password=dict(type='str', default=None, required=True, no_log=True),
         cluster_name=dict(type='str', default=None, required=True),
@@ -111,7 +112,6 @@ def main():
     host = p.get('host')
     port = p.get('port')
     context_path = p.get('context_path')
-    context_path = context_path if context_path is not None else ''
     username = p.get('username')
     password = p.get('password')
     cluster_name = p.get('cluster_name')
@@ -130,12 +130,11 @@ def gather_facts(module, protocol, host, port, context_path, username, password,
         ambari_cluster_config_facts = {}
         for config_type in config_types:
             config = get_cluster_config(ambari_url, username, password, cluster_name, config_type, config_types[config_type]['tag'], connection_timeout)
-            safe_conf_type = config_type   #.replace('-', '_')
-            ambari_cluster_config_facts[safe_conf_type] = config['properties']
+            ambari_cluster_config_facts[config_type] = config['properties']
 
         module.exit_json(changed=False,
                          results=ambari_cluster_config_facts,
-                         ansible_facts=ambari_cluster_config_facts,
+                         ansible_facts={'ambari_component_facts': ambari_cluster_config_facts},
                          msg='Gathered facts for ambari services.')
     except requests.ConnectionError as e:
         module.fail_json(
