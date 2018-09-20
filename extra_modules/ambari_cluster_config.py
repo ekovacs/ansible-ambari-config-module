@@ -24,6 +24,8 @@ options:
     description:
       In case Ambari has a proxy in front of it, context path is the additional path, which must be prepended to each Ambari call. It should include a prepended slash, but no trailing slash
     required: no
+    default:
+      ''
   username:
     description:
       The username for the ambari web server
@@ -121,7 +123,7 @@ def main():
         protocol=dict(type='str', default='http', required=False),
         host=dict(type='str', default='localhost', required=False),
         port=dict(type='int', default=None, required=True),
-        context_path=dict(type='str', default=None, required=False),
+        context_path=dict(type='str', default='', required=False),
         username=dict(type='str', default=None, required=True),
         password=dict(type='str', default=None, required=True, no_log=True),
         cluster_name=dict(type='str', default=None, required=True),
@@ -159,7 +161,6 @@ def main():
     host = p.get('host')
     port = p.get('port')
     context_path = p.get('context_path')
-    context_path = context_path if context_path is not None else ''
     username = p.get('username')
     password = p.get('password')
     cluster_name = p.get('cluster_name')
